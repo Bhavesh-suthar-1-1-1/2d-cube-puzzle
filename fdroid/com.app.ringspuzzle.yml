@@ -1,0 +1,35 @@
+Categories:
+  - Puzzle Game
+License: MIT
+AuthorName: Bhavesh Suthar
+WebSite: https://github.com/Bhavesh-suthar-1-1-1/2d-cube-puzzle
+SourceCode: https://github.com/Bhavesh-suthar-1-1-1/2d-cube-puzzle
+IssueTracker: https://github.com/Bhavesh-suthar-1-1-1/2d-cube-puzzle/issues
+Changelog: https://github.com/Bhavesh-suthar-1-1-1/2d-cube-puzzle/releases
+
+AutoName: 2D Cube Puzzle
+Summary: The whole Rubik's Cube in 2D — spin 9 rings, sort 54 dots, solve it
+Description: |
+  The whole Rubik's Cube, flattened into 2D.
+
+  54 coloured dots sit on 9 overlapping circles — the exact diagram of a cube's moves. Tap a circle to turn it, just like turning a face of the cube. Sort every dot back into its colour group to solve it.
+
+  Tap any circle to turn it (Forward / Prime switch sets the direction). Scramble deals a fresh puzzle — 3, 6, 12 or 24 turns, each with its own Par. Undo a move, or ask for a Hint that points at the next move back to solved. Moves counter and timer start on your first move. Best time and best moves are saved on your phone, per level.
+
+  No ads. No sign-in. No internet. No permissions. Fully offline — just you and the puzzle.
+
+RepoType: git
+Repo: https://github.com/Bhavesh-suthar-1-1-1/2d-cube-puzzle
+
+Builds:
+  - versionName: 2.3
+    versionCode: 5
+    commit: 525c721e89b1b21d7d2fce94391a8098a82562e8
+    subdir: app
+    gradle:
+      - yes
+
+AutoUpdateMode: Version v%v
+UpdateCheckMode: Tags
+CurrentVersion: 2.3
+CurrentVersionCode: 5
