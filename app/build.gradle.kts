@@ -11,8 +11,8 @@ android {
         applicationId = "com.app.ringspuzzle"
         minSdk = 26
         targetSdk = 33
-        versionCode = 4
-        versionName = "2.2"
+        versionCode = 5
+        versionName = "2.3"
     }
 
     buildFeatures {

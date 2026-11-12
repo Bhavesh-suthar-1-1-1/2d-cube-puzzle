@@ -1,6 +1,8 @@
 package com.app.ringspuzzle
 
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -535,6 +537,16 @@ fun RingsApp() {
             ) {
                 Text(text = "Reset", color = INK, fontSize = 13.sp, maxLines = 1)
             }
+        }
+        TextButton(
+            onClick = {
+                context.startActivity(
+                    Intent(Intent.ACTION_VIEW, Uri.parse("https://t.me/iopXtiop_bot"))
+                )
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(text = "Connect with", color = MUTED, fontSize = 13.sp)
         }
     }
 

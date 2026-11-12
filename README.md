@@ -9,7 +9,7 @@ exactly like the video's diagram. Tap a circle and it turns like a cube move.
 
 Get the ready-to-install APK from the
 [latest release](https://github.com/Bhavesh-suthar-1-1-1/2d-cube-puzzle/releases/latest)
-(`rings-2.2-signed.apk`, Android 8.0 and up, no permissions, fully offline).
+(`rings-2.3-signed.apk`, Android 8.0 and up, no permissions, fully offline).
 Installs over earlier versions.
 
 ## How to play
@@ -49,6 +49,8 @@ Installs over earlier versions.
 
 ## Versions
 
+- **v2.3** — "Connect with" button under the controls — opens the Telegram
+  bot to message Bhavesh directly.
 - **v2.2** — Undo, Hint (with the circle highlighted), Levels 3/6/12/24 with
   Par and per-level bests, game survives rotating the phone.
 - **v2.1** — bigger board filling the screen, header up top, all controls in
