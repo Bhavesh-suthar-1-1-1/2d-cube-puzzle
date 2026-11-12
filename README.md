@@ -49,6 +49,7 @@ Installs over earlier versions.
 
 ## Versions
 
+- **v2.4** — Settings (gear in the header): 8 dot-colour themes (Classic, Pink, Lemon, Earth, Ocean, Sunset, Neon, Pastel), glow dots, all rings one way, show/hide timer, difficulty Beginner/Smart/Pro, How to play with what every move letter means. Hints now limited per game: 1 on 3 turns, 2 on 6, 5 on 12, 10 on 24.
 - **v2.3** — "Connect with" button under the controls — opens the Telegram
   bot to message Bhavesh directly.
 - **v2.2** — Undo, Hint (with the circle highlighted), Levels 3/6/12/24 with

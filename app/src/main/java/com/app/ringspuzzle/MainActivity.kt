@@ -23,7 +23,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -64,8 +68,6 @@ private val MUTED = Color(0xFF9A9A9A)
 private val RING_GREY = Color(0xFF8A8A8A)
 private val ACCENT = Color(0xFFFFD500)
 private val ARROW = Color(0xFFBFBFBF)
-
-private val LEVELS = listOf(3, 6, 12, 24)
 private fun timeKey(n: Int) = if (n == 24) "best_time" else "best_time_$n"
 private fun movesKey(n: Int) = if (n == 24) "best_moves" else "best_moves_$n"
 
@@ -110,10 +112,23 @@ fun RingsApp() {
     var history by rememberSaveable(stateSaver = ListSaver) { mutableStateOf(listOf<String>()) }
     // Word from solved to the current board (cancelling pairs removed). Used by Hint.
     var stack by rememberSaveable(stateSaver = ListSaver) { mutableStateOf(listOf<String>()) }
-    var levelIdx by rememberSaveable { mutableStateOf(LEVELS.lastIndex) }
-    var activeN by rememberSaveable { mutableStateOf(LEVELS.last()) }
+    var levelIdx by rememberSaveable { mutableStateOf(3) }
+    var activeN by rememberSaveable { mutableStateOf(24) }
     var hints by rememberSaveable { mutableStateOf(0) }
+    var hintsLeft by rememberSaveable { mutableStateOf(hintBudget(24)) }
     var hintMove by rememberSaveable { mutableStateOf("") }
+    // Settings (saved on the phone).
+    var showSettings by remember { mutableStateOf(false) }
+    var showHowTo by remember { mutableStateOf(false) }
+    var themeIdx by rememberSaveable { mutableStateOf(prefs.getInt("theme_idx", 0)) }
+    var glowDots by rememberSaveable { mutableStateOf(prefs.getBoolean("glow_dots", false)) }
+    var oneDirection by rememberSaveable { mutableStateOf(prefs.getBoolean("one_direction", false)) }
+    var showTimer by rememberSaveable { mutableStateOf(prefs.getBoolean("show_timer", true)) }
+    var difficulty by rememberSaveable { mutableStateOf(prefs.getInt("difficulty", 0)) }
+    val levels = remember(difficulty) { levelsFor(difficulty) }
+    val dotColors = remember(themeIdx) {
+        themeColors(DOT_THEMES[themeIdx.coerceIn(DOT_THEMES.indices)])
+    }
     var bestTime by remember { mutableStateOf(prefs.getInt(timeKey(activeN), -1)) }
     var bestMoves by remember { mutableStateOf(prefs.getInt(movesKey(activeN), -1)) }
     val turnJob = remember { arrayOfNulls<Job>(1) }
@@ -138,9 +153,9 @@ fun RingsApp() {
     fun toPx(nx: Float, ny: Float): Offset =
         Offset(boardCx + nx * boardScale, boardCy + ny * boardScale)
 
-    // Timer: runs from the first move until solved.
-    LaunchedEffect(started, solved) {
-        while (started && !solved) {
+    // Timer: runs from the first move until solved (off when hidden).
+    LaunchedEffect(started, solved, showTimer) {
+        while (started && !solved && showTimer) {
             delay(1000)
             seconds++
         }
@@ -164,7 +179,7 @@ fun RingsApp() {
             solved = true
             // Runs that used hints don't count for the records.
             if (hints == 0) {
-                if (bestTime < 0 || seconds < bestTime) {
+                if (showTimer && (bestTime < 0 || seconds < bestTime)) {
                     bestTime = seconds
                     prefs.edit().putInt(timeKey(activeN), seconds).apply()
                 }
@@ -177,12 +192,25 @@ fun RingsApp() {
         }
     }
 
+    /** Tap step with the "one direction" setting: every tap turns the same way. */
+    fun stepFor(circle: Circle, isPrime: Boolean): Int =
+        if (oneDirection) {
+            if (isPrime) -DotsGame.STEP else DotsGame.STEP
+        } else {
+            DotsGame.tapStep(circle, isPrime)
+        }
+
+    /** Move name for an actual step: "U" when the step is the circle's own way, "U'" otherwise. */
+    fun nameForStep(circle: Circle, step: Int): String =
+        circle.name + if (step == DotsGame.STEP * circle.dir) "" else "'"
+
     fun playMove(circle: Circle, isPrime: Boolean) {
         if (scrambling || solved || animCircle != null) return
-        val name = DotsGame.moveName(circle, isPrime)
+        val step = stepFor(circle, isPrime)
+        val name = nameForStep(circle, step)
         hintMove = ""
         turnJob[0] = scope.launch {
-            animateTurn(circle, DotsGame.tapStep(circle, isPrime), 380)
+            animateTurn(circle, step, 380)
             history = history + name
             stack = DotsGame.pushMove(stack, name)
             afterCountedMove()
@@ -205,17 +233,20 @@ fun RingsApp() {
     }
 
     fun hint() {
-        if (scrambling || solved || animCircle != null || stack.isEmpty()) return
+        if (scrambling || solved || animCircle != null || stack.isEmpty() || hintsLeft <= 0) return
         val h = DotsGame.inverse(stack.last())
         hintMove = h
-        prime = h.endsWith("'")
+        val (hc, hp) = DotsGame.parseMove(h)
+        // With "one direction" on, the toggle must point the way the hint needs.
+        prime = if (oneDirection) DotsGame.tapStep(hc, hp) < 0 else hp
         hints++
+        hintsLeft--
     }
 
     fun scramble() {
         if (scrambling) return
         scrambling = true
-        val n = LEVELS[levelIdx]
+        val n = levels[levelIdx]
         turnJob[0]?.cancel()
         turnJob[0] = scope.launch {
             animCircle = null
@@ -228,6 +259,7 @@ fun RingsApp() {
             stack = emptyList()
             hintMove = ""
             hints = 0
+            hintsLeft = hintBudget(n)
             activeN = n
             bestTime = prefs.getInt(timeKey(n), -1)
             bestMoves = prefs.getInt(movesKey(n), -1)
@@ -257,8 +289,29 @@ fun RingsApp() {
         stack = emptyList()
         hintMove = ""
         hints = 0
+        hintsLeft = hintBudget(activeN)
     }
 
+    if (showSettings) {
+        SettingsScreen(
+            themeIdx = themeIdx,
+            onTheme = { themeIdx = it; prefs.edit().putInt("theme_idx", it).apply() },
+            difficulty = difficulty,
+            onDifficulty = {
+                difficulty = it
+                levelIdx = 0
+                prefs.edit().putInt("difficulty", it).apply()
+            },
+            glowDots = glowDots,
+            onGlowDots = { glowDots = it; prefs.edit().putBoolean("glow_dots", it).apply() },
+            oneDirection = oneDirection,
+            onOneDirection = { oneDirection = it; prefs.edit().putBoolean("one_direction", it).apply() },
+            showTimer = showTimer,
+            onShowTimer = { showTimer = it; prefs.edit().putBoolean("show_timer", it).apply() },
+            onHowToPlay = { showHowTo = true },
+            onDone = { showSettings = false }
+        )
+    } else {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -266,13 +319,25 @@ fun RingsApp() {
             .padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 10.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(
-            text = "Rings",
-            color = INK,
-            fontSize = 30.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.fillMaxWidth()
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Rings",
+                color = INK,
+                fontSize = 30.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.weight(1f)
+            )
+            IconButton(onClick = { showSettings = true }) {
+                Icon(
+                    imageVector = Icons.Default.Settings,
+                    contentDescription = "Settings",
+                    tint = INK
+                )
+            }
+        }
         Text(
             text = "The whole Rubik's cube in 2D — tap a circle to turn it.",
             color = MUTED,
@@ -283,8 +348,15 @@ fun RingsApp() {
 
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
             Stat("Moves", moves.toString())
-            Stat("Time", fmtTime(seconds))
-            Stat("Best", if (bestTime < 0) "—" else fmtTime(bestTime))
+            if (showTimer) Stat("Time", fmtTime(seconds))
+            Stat(
+                "Best",
+                if (showTimer) {
+                    if (bestTime < 0) "—" else fmtTime(bestTime)
+                } else {
+                    if (bestMoves < 0) "—" else bestMoves.toString()
+                }
+            )
             Stat("Par", activeN.toString())
         }
         Spacer(modifier = Modifier.height(4.dp))
@@ -372,7 +444,7 @@ fun RingsApp() {
                 val py = centre.y + radius * sin(mid).toFloat()
                 // Travel direction: a forward tap moves dots toward
                 // increasing slot index (increasing angle); prime reverses it.
-                val step = DotsGame.tapStep(c, prime)
+                val step = stepFor(c, prime)
                 val sgn = if (step > 0) 1f else -1f
                 // Tangent at this point, in the travel direction.
                 val tx = -sin(mid).toFloat() * sgn
@@ -414,11 +486,15 @@ fun RingsApp() {
                         centre.x + radius * cos(a).toFloat(),
                         centre.y + radius * sin(a).toFloat()
                     )
-                    colour = DotsGame.COLORS.getValue(animFrom[slot])
+                    colour = dotColors.getValue(animFrom[slot])
                 } else {
                     val (nx, ny) = DotsData.slots[slot]
                     pos = toPx(nx, ny)
-                    colour = DotsGame.COLORS.getValue(balls[slot])
+                    colour = dotColors.getValue(balls[slot])
+                }
+                if (glowDots) {
+                    drawCircle(color = colour.copy(alpha = 0.18f), radius = dotR * 1.9f, center = pos)
+                    drawCircle(color = colour.copy(alpha = 0.30f), radius = dotR * 1.45f, center = pos)
                 }
                 drawCircle(color = colour, radius = dotR, center = pos)
                 drawCircle(
@@ -458,16 +534,16 @@ fun RingsApp() {
             ) { Text(text = "Undo", color = INK, fontSize = 13.sp, maxLines = 1) }
             OutlinedButton(
                 onClick = { hint() },
-                enabled = !scrambling && !solved && stack.isNotEmpty() && animCircle == null,
+                enabled = !scrambling && !solved && stack.isNotEmpty() && hintsLeft > 0 && animCircle == null,
                 modifier = Modifier.weight(1f),
                 contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp)
-            ) { Text(text = "Hint", color = INK, fontSize = 13.sp, maxLines = 1) }
+            ) { Text(text = "Hint ($hintsLeft)", color = INK, fontSize = 13.sp, maxLines = 1) }
             OutlinedButton(
-                onClick = { levelIdx = (levelIdx + 1) % LEVELS.size },
+                onClick = { levelIdx = (levelIdx + 1) % levels.size },
                 enabled = !scrambling,
                 modifier = Modifier.weight(1.4f),
                 contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp)
-            ) { Text(text = "Level: ${LEVELS[levelIdx]} turns", color = INK, fontSize = 13.sp, maxLines = 1) }
+            ) { Text(text = "Level: ${levels[levelIdx]} turns", color = INK, fontSize = 13.sp, maxLines = 1) }
         }
         Spacer(modifier = Modifier.height(6.dp))
 
@@ -549,17 +625,23 @@ fun RingsApp() {
             Text(text = "Connect with", color = MUTED, fontSize = 13.sp)
         }
     }
+    }
 
-    if (showWin) {
+    if (showHowTo) {
+        HowToPlayDialog(onClose = { showHowTo = false })
+    }
+
+    if (showWin && !showSettings) {
         AlertDialog(
             onDismissRequest = { showWin = false },
             title = { Text(text = "Solved!") },
             text = {
                 Text(
                     text = "The whole cube, back in order.\n" +
-                        "Time ${fmtTime(seconds)}  ·  $moves moves  ·  par $activeN\n" +
+                        (if (showTimer) "Time ${fmtTime(seconds)}  ·  " else "") +
+                        "$moves moves  ·  par $activeN\n" +
                         (if (hints > 0) "Hints used: $hints (not counted for best)\n" else "") +
-                        "Best ${if (bestTime < 0) "—" else fmtTime(bestTime)}  ·  " +
+                        (if (showTimer) "Best ${if (bestTime < 0) "—" else fmtTime(bestTime)}  ·  " else "") +
                         "${if (bestMoves < 0) "—" else "$bestMoves moves"}"
                 )
             },
