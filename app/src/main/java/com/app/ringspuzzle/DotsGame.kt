@@ -72,20 +72,43 @@ object DotsGame {
 
     fun isSolved(state: CharArray): Boolean = state.contentEquals(solved)
 
-    /** Random turns for scrambling; never immediately undoes the last turn. */
+    /** The opposite move: U <-> U'. */
+    fun inverse(name: String): String =
+        if (name.endsWith("'")) name.dropLast(1) else "$name'"
+
+    /** "U'" -> (circle U, prime = true). */
+    fun parseMove(name: String): Pair<Circle, Boolean> {
+        val prime = name.endsWith("'")
+        val base = name.removeSuffix("'")
+        return DotsData.circles.first { it.name == base } to prime
+    }
+
+    /**
+     * Keeps a running "how to get from solved to here" word.
+     * A move that cancels the previous one removes it instead of piling up.
+     */
+    fun pushMove(stack: List<String>, name: String): List<String> =
+        if (stack.isNotEmpty() && stack.last() == inverse(name)) stack.dropLast(1)
+        else stack + name
+
+    /**
+     * Random turns for scrambling. Never turns the same circle twice in a row
+     * (so moves can't cancel or stack up) and never ends on a solved board.
+     */
     fun scrambleMoves(n: Int): List<Pair<Circle, Boolean>> {
         val rnd = Random.Default
-        val out = ArrayList<Pair<Circle, Boolean>>(n)
-        var prev: Pair<Circle, Boolean>? = null
-        while (out.size < n) {
-            val c = DotsData.circles[rnd.nextInt(DotsData.circles.size)]
-            val prime = rnd.nextBoolean()
-            val m = c to prime
-            // Skip the exact inverse of the previous turn.
-            if (prev != null && prev.first == c && prev.second != prime) continue
-            out += m
-            prev = m
+        while (true) {
+            val out = ArrayList<Pair<Circle, Boolean>>(n)
+            var prevCircle: Circle? = null
+            while (out.size < n) {
+                val c = DotsData.circles[rnd.nextInt(DotsData.circles.size)]
+                if (c === prevCircle) continue
+                out += c to rnd.nextBoolean()
+                prevCircle = c
+            }
+            var s = solved
+            for ((c, p) in out) s = rotate(s, c, tapStep(c, p))
+            if (!isSolved(s)) return out
         }
-        return out
     }
 }

@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AlertDialog
@@ -29,6 +30,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -44,6 +47,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.abs
@@ -58,6 +62,19 @@ private val MUTED = Color(0xFF9A9A9A)
 private val RING_GREY = Color(0xFF8A8A8A)
 private val ACCENT = Color(0xFFFFD500)
 private val ARROW = Color(0xFFBFBFBF)
+
+private val LEVELS = listOf(3, 6, 12, 24)
+private fun timeKey(n: Int) = if (n == 24) "best_time" else "best_time_$n"
+private fun movesKey(n: Int) = if (n == 24) "best_moves" else "best_moves_$n"
+
+private val CharArraySaver = Saver<CharArray, String>(
+    save = { String(it) },
+    restore = { it.toCharArray() }
+)
+private val ListSaver = Saver<List<String>, String>(
+    save = { it.joinToString(" ") },
+    restore = { if (it.isEmpty()) emptyList() else it.split(" ") }
+)
 
 private fun fmtTime(seconds: Int): String {
     val m = seconds / 60
@@ -80,17 +97,24 @@ fun RingsApp() {
     }
     val scope = rememberCoroutineScope()
 
-    var balls by remember { mutableStateOf(DotsGame.solved) }
-    var moves by remember { mutableStateOf(0) }
-    var seconds by remember { mutableStateOf(0) }
-    var started by remember { mutableStateOf(false) }
-    var solved by remember { mutableStateOf(false) }
+    var balls by rememberSaveable(stateSaver = CharArraySaver) { mutableStateOf(DotsGame.solved) }
+    var moves by rememberSaveable { mutableStateOf(0) }
+    var seconds by rememberSaveable { mutableStateOf(0) }
+    var started by rememberSaveable { mutableStateOf(false) }
+    var solved by rememberSaveable { mutableStateOf(false) }
     var scrambling by remember { mutableStateOf(false) }
     var showWin by remember { mutableStateOf(false) }
-    var prime by remember { mutableStateOf(false) }
-    var history by remember { mutableStateOf(listOf<String>()) }
-    var bestTime by remember { mutableStateOf(prefs.getInt("best_time", -1)) }
-    var bestMoves by remember { mutableStateOf(prefs.getInt("best_moves", -1)) }
+    var prime by rememberSaveable { mutableStateOf(false) }
+    var history by rememberSaveable(stateSaver = ListSaver) { mutableStateOf(listOf<String>()) }
+    // Word from solved to the current board (cancelling pairs removed). Used by Hint.
+    var stack by rememberSaveable(stateSaver = ListSaver) { mutableStateOf(listOf<String>()) }
+    var levelIdx by rememberSaveable { mutableStateOf(LEVELS.lastIndex) }
+    var activeN by rememberSaveable { mutableStateOf(LEVELS.last()) }
+    var hints by rememberSaveable { mutableStateOf(0) }
+    var hintMove by rememberSaveable { mutableStateOf("") }
+    var bestTime by remember { mutableStateOf(prefs.getInt(timeKey(activeN), -1)) }
+    var bestMoves by remember { mutableStateOf(prefs.getInt(movesKey(activeN), -1)) }
+    val turnJob = remember { arrayOfNulls<Job>(1) }
 
     // Turn animation state: which circle is turning, from which board, by how much.
     var animCircle by remember { mutableStateOf<Circle?>(null) }
@@ -136,42 +160,80 @@ fun RingsApp() {
         if (!started) started = true
         if (DotsGame.isSolved(balls)) {
             solved = true
-            if (bestTime < 0 || seconds < bestTime) {
-                bestTime = seconds
-                prefs.edit().putInt("best_time", seconds).apply()
-            }
-            if (bestMoves < 0 || moves < bestMoves) {
-                bestMoves = moves
-                prefs.edit().putInt("best_moves", moves).apply()
+            // Runs that used hints don't count for the records.
+            if (hints == 0) {
+                if (bestTime < 0 || seconds < bestTime) {
+                    bestTime = seconds
+                    prefs.edit().putInt(timeKey(activeN), seconds).apply()
+                }
+                if (bestMoves < 0 || moves < bestMoves) {
+                    bestMoves = moves
+                    prefs.edit().putInt(movesKey(activeN), moves).apply()
+                }
             }
             showWin = true
         }
     }
 
-    fun tapCircle(circle: Circle) {
+    fun playMove(circle: Circle, isPrime: Boolean) {
         if (scrambling || solved || animCircle != null) return
-        val step = DotsGame.tapStep(circle, prime)
-        history = history + DotsGame.moveName(circle, prime)
-        scope.launch {
-            animateTurn(circle, step, 380)
+        val name = DotsGame.moveName(circle, isPrime)
+        hintMove = ""
+        turnJob[0] = scope.launch {
+            animateTurn(circle, DotsGame.tapStep(circle, isPrime), 380)
+            history = history + name
+            stack = DotsGame.pushMove(stack, name)
             afterCountedMove()
         }
     }
 
+    fun tapCircle(circle: Circle) = playMove(circle, prime)
+
+    fun undo() {
+        if (scrambling || solved || animCircle != null || history.isEmpty()) return
+        val inv = DotsGame.inverse(history.last())
+        val (circle, isPrime) = DotsGame.parseMove(inv)
+        hintMove = ""
+        turnJob[0] = scope.launch {
+            animateTurn(circle, DotsGame.tapStep(circle, isPrime), 250)
+            history = history.dropLast(1)
+            stack = DotsGame.pushMove(stack, inv)
+            moves = maxOf(0, moves - 1)
+        }
+    }
+
+    fun hint() {
+        if (scrambling || solved || animCircle != null || stack.isEmpty()) return
+        val h = DotsGame.inverse(stack.last())
+        hintMove = h
+        prime = h.endsWith("'")
+        hints++
+    }
+
     fun scramble() {
         if (scrambling) return
-        scope.launch {
-            scrambling = true
+        scrambling = true
+        val n = LEVELS[levelIdx]
+        turnJob[0]?.cancel()
+        turnJob[0] = scope.launch {
+            animCircle = null
             solved = false
             showWin = false
             moves = 0
             seconds = 0
             started = false
             history = emptyList()
+            stack = emptyList()
+            hintMove = ""
+            hints = 0
+            activeN = n
+            bestTime = prefs.getInt(timeKey(n), -1)
+            bestMoves = prefs.getInt(movesKey(n), -1)
             balls = DotsGame.solved
             delay(150)
-            for ((circle, isPrime) in DotsGame.scrambleMoves(24)) {
-                animateTurn(circle, DotsGame.tapStep(circle, isPrime), 90)
+            for ((circle, isPrime) in DotsGame.scrambleMoves(n)) {
+                animateTurn(circle, DotsGame.tapStep(circle, isPrime), if (n <= 6) 220 else 90)
+                stack = DotsGame.pushMove(stack, DotsGame.moveName(circle, isPrime))
                 delay(30)
             }
             scrambling = false
@@ -180,6 +242,7 @@ fun RingsApp() {
 
     fun reset() {
         if (scrambling) return
+        turnJob[0]?.cancel()
         scope.launch { animProgress.snapTo(0f) }
         animCircle = null
         balls = DotsGame.solved
@@ -189,6 +252,9 @@ fun RingsApp() {
         solved = false
         showWin = false
         history = emptyList()
+        stack = emptyList()
+        hintMove = ""
+        hints = 0
     }
 
     Column(
@@ -217,6 +283,7 @@ fun RingsApp() {
             Stat("Moves", moves.toString())
             Stat("Time", fmtTime(seconds))
             Stat("Best", if (bestTime < 0) "—" else fmtTime(bestTime))
+            Stat("Par", activeN.toString())
         }
         Spacer(modifier = Modifier.height(4.dp))
 
@@ -226,7 +293,7 @@ fun RingsApp() {
                 .fillMaxWidth()
                 .weight(1f)
                 .onSizeChanged { boardSize = it }
-                .pointerInput(scrambling, solved, prime) {
+                .pointerInput(scrambling, solved, prime, boardSize) {
                     detectTapGestures { tap ->
                         if (scrambling || solved || animCircle != null) return@detectTapGestures
                         if (boardSize.width <= 0) return@detectTapGestures
@@ -257,6 +324,13 @@ fun RingsApp() {
                 if (live == c) {
                     drawCircle(
                         color = INK,
+                        radius = radius,
+                        center = centre,
+                        style = Stroke(width = 5f)
+                    )
+                } else if (hintMove.isNotEmpty() && hintMove.removeSuffix("'") == c.name) {
+                    drawCircle(
+                        color = ACCENT,
                         radius = radius,
                         center = centre,
                         style = Stroke(width = 5f)
@@ -356,14 +430,44 @@ fun RingsApp() {
 
         // Move history, like the video's strip at the bottom.
         Text(
-            text = if (history.isEmpty()) "Tap a circle — its name joins the line below."
-            else history.takeLast(14).joinToString("  "),
-            color = if (history.isEmpty()) MUTED else INK,
+            text = when {
+                hintMove.isNotEmpty() -> "Hint: tap ${hintMove.replace("'", "′")} (highlighted)"
+                history.isEmpty() -> "Tap a circle — its name joins the line below."
+                else -> history.takeLast(14).joinToString("  ")
+            },
+            color = if (hintMove.isNotEmpty()) ACCENT else if (history.isEmpty()) MUTED else INK,
             fontSize = 15.sp,
             textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth()
         )
         Spacer(modifier = Modifier.height(8.dp))
+
+        // Undo / Hint / Level.
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            OutlinedButton(
+                onClick = { undo() },
+                enabled = !scrambling && !solved && history.isNotEmpty() && animCircle == null,
+                modifier = Modifier.weight(1f),
+                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp)
+            ) { Text(text = "Undo", color = INK, fontSize = 13.sp, maxLines = 1) }
+            OutlinedButton(
+                onClick = { hint() },
+                enabled = !scrambling && !solved && stack.isNotEmpty() && animCircle == null,
+                modifier = Modifier.weight(1f),
+                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp)
+            ) { Text(text = "Hint", color = INK, fontSize = 13.sp, maxLines = 1) }
+            OutlinedButton(
+                onClick = { levelIdx = (levelIdx + 1) % LEVELS.size },
+                enabled = !scrambling,
+                modifier = Modifier.weight(1.4f),
+                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp)
+            ) { Text(text = "Level: ${LEVELS[levelIdx]} turns", color = INK, fontSize = 13.sp, maxLines = 1) }
+        }
+        Spacer(modifier = Modifier.height(6.dp))
 
         // All controls in one line at the bottom.
         Row(
@@ -441,7 +545,8 @@ fun RingsApp() {
             text = {
                 Text(
                     text = "The whole cube, back in order.\n" +
-                        "Time ${fmtTime(seconds)}  ·  $moves moves\n" +
+                        "Time ${fmtTime(seconds)}  ·  $moves moves  ·  par $activeN\n" +
+                        (if (hints > 0) "Hints used: $hints (not counted for best)\n" else "") +
                         "Best ${if (bestTime < 0) "—" else fmtTime(bestTime)}  ·  " +
                         "${if (bestMoves < 0) "—" else "$bestMoves moves"}"
                 )

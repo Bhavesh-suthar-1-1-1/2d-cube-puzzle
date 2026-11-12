@@ -9,7 +9,7 @@ exactly like the video's diagram. Tap a circle and it turns like a cube move.
 
 Get the ready-to-install APK from the
 [latest release](https://github.com/Bhavesh-suthar-1-1-1/2d-cube-puzzle/releases/latest)
-(`rings-2.1-signed.apk`, Android 8.0 and up, no permissions, fully offline).
+(`rings-2.2-signed.apk`, Android 8.0 and up, no permissions, fully offline).
 Installs over earlier versions.
 
 ## How to play
@@ -18,10 +18,15 @@ Installs over earlier versions.
   the way the video's highlighted circle does. The turning circle goes white.
 - **Forward / Prime** switches the tap direction (a move or its opposite).
 - The **move names** build up in a line at the bottom, like the video's strip.
-- **Scramble** shuffles the dots (24 random turns). **Reset** goes back to solved.
+- **Scramble** shuffles the dots. **Level** picks how hard: 3, 6, 12 or 24
+  turns (shown as Par). **Reset** goes back to solved.
+- **Undo** takes back your last move. **Hint** shows the next move back
+  toward solved and highlights its circle in yellow. Runs that used a hint
+  don't count for the records.
 - **Win** by getting every dot back to its colour group — the video's solved frame.
 - Moves counter, timer from the first move, and best time / moves are saved
-  on the phone.
+  on the phone — separately for each level. Rotating the phone doesn't lose
+  the game.
 
 ## The board
 
@@ -44,6 +49,8 @@ Installs over earlier versions.
 
 ## Versions
 
+- **v2.2** — Undo, Hint (with the circle highlighted), Levels 3/6/12/24 with
+  Par and per-level bests, game survives rotating the phone.
 - **v2.1** — bigger board filling the screen, header up top, all controls in
   one line at the bottom, direction arrows on the empty arcs.
 - **v2.0** — the dots diagram: 54 dots on 9 circles, tap a circle to turn it.
