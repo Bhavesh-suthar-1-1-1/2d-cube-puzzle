@@ -60,3 +60,7 @@ Installs over earlier versions.
 
 Made with the offline Gradle recipe — no network needed for the build itself
 once the dependencies are cached.
+
+## License
+
+MIT — see [LICENSE](LICENSE).

@@ -1,0 +1,1 @@
+The whole Rubik's Cube in 2D — spin 9 rings, sort 54 dots, solve it.
