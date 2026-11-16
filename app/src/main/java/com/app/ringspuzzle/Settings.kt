@@ -28,81 +28,79 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin.math.roundToInt
 
-private val S_BG = Color(0xFF0A0A0A)
-private val S_INK = Color(0xFFF2F2F2)
-private val S_MUTED = Color(0xFF9A9A9A)
-private val S_ACCENT = Color(0xFFFFD500)
+private val S_BG = Color(0xFF07080A)
+private val S_SURFACE = Color(0xFF13151A)
+private val S_INK = Color(0xFFF8F9FA)
+private val S_MUTED = Color(0xFF8B949E)
+private val S_ACCENT = Color(0xFFFFB703)
+private val S_BORDER = Color(0xFF21262D)
 
-/** One dot-colour theme: a colour for each of the 6 groups (R Y B G O W). */
 data class DotTheme(val name: String, val colors: List<Color>)
 
 val GROUP_KEYS = listOf('R', 'Y', 'B', 'G', 'O', 'W')
 
-/**
- * Every theme has 6 colours that are easy to tell apart, so the groups
- * pop out from each other on the black board.
- */
 val DOT_THEMES = listOf(
     DotTheme(
-        "Classic",
+        "Classic Amber",
         listOf(
-            Color(0xFFEF343B), Color(0xFFFCD415), Color(0xFF1581FD),
-            Color(0xFF10A657), Color(0xFFFC700E), Color(0xFFEFEEEE)
+            Color(0xFFFF3366), Color(0xFFFFD700), Color(0xFF00B4D8),
+            Color(0xFF2EC4B6), Color(0xFFFF9F1C), Color(0xFFFFFFFF)
         )
     ),
     DotTheme(
-        "Pink",
+        "Cyberpunk Neon",
         listOf(
-            Color(0xFFFF4D8D), Color(0xFFFFB6D5), Color(0xFFC724B1),
-            Color(0xFFFF4D6D), Color(0xFFA55CFF), Color(0xFFFFFFFF)
+            Color(0xFFFF007F), Color(0xFF39FF14), Color(0xFF00FFFF),
+            Color(0xFFFFFF00), Color(0xFFFF5E00), Color(0xFFBD00FF)
         )
     ),
     DotTheme(
-        "Lemon",
+        "Sunset Glow",
         listOf(
-            Color(0xFFFFF200), Color(0xFF7ED957), Color(0xFF00A651),
-            Color(0xFF00B8A9), Color(0xFFFFB800), Color(0xFFFFFDD0)
+            Color(0xFFE63946), Color(0xFFF4A261), Color(0xFFE9C46A),
+            Color(0xFF2A9D8F), Color(0xFF264653), Color(0xFFFFF1E6)
         )
     ),
     DotTheme(
-        "Earth",
+        "Emerald Deep",
         listOf(
-            Color(0xFF4B2E1A), Color(0xFF8D5524), Color(0xFFB7410E),
-            Color(0xFFC68A3C), Color(0xFFD2A679), Color(0xFFF5E6CC)
+            Color(0xFF2D6A4F), Color(0xFF52B788), Color(0xFF74C69D),
+            Color(0xFFB7E4C7), Color(0xFFD8F3DC), Color(0xFF1B4332)
         )
     ),
     DotTheme(
-        "Ocean",
+        "Royal Amethyst",
         listOf(
-            Color(0xFF283593), Color(0xFF1565FF), Color(0xFF00BCD4),
-            Color(0xFF00897B), Color(0xFF4FC3F7), Color(0xFFB2EBF2)
+            Color(0xFF7B2CBF), Color(0xFF9D4EDD), Color(0xFFC77DFF),
+            Color(0xFFE0AAFF), Color(0xFF5A189A), Color(0xFFF8F9FA)
         )
     ),
     DotTheme(
-        "Sunset",
+        "Arctic Frost",
         listOf(
-            Color(0xFFE53935), Color(0xFFFF6D00), Color(0xFFFFB300),
-            Color(0xFFEC407A), Color(0xFF7E57C2), Color(0xFFFFAB91)
+            Color(0xFF03045E), Color(0xFF0077B6), Color(0xFF00B4D8),
+            Color(0xFF90E0EF), Color(0xFFADE8F4), Color(0xFFFFFFFF)
         )
     ),
     DotTheme(
-        "Neon",
+        "Ember Dark",
         listOf(
-            Color(0xFFFF00AA), Color(0xFF39FF14), Color(0xFF00FFFF),
-            Color(0xFFFFFF00), Color(0xFFFF6F00), Color(0xFFBF00FF)
+            Color(0xFF370617), Color(0xFF6A040F), Color(0xFF9D0208),
+            Color(0xFFD00000), Color(0xFFDC2F02), Color(0xFFFFF3B0)
         )
     ),
     DotTheme(
-        "Pastel",
+        "Pastel Dream",
         listOf(
-            Color(0xFFFFB6C1), Color(0xFFAEC6CF), Color(0xFFFDFD96),
-            Color(0xFF77DD77), Color(0xFFCBC3E3), Color(0xFFFFDAB9)
+            Color(0xFFFFB5A7), Color(0xFFFCD5CE), Color(0xFFF8EDEB),
+            Color(0xFFF9DCC4), Color(0xFFFEC89A), Color(0xFFE8D1FC)
         )
     )
 )
@@ -112,14 +110,12 @@ fun themeColors(theme: DotTheme): Map<Char, Color> =
 
 val DIFFICULTIES = listOf("Beginner", "Smart", "Pro")
 
-/** Scramble sizes per difficulty — each step up is a harder shuffle. */
 fun levelsFor(difficulty: Int): List<Int> = when (difficulty) {
     1 -> listOf(6, 12, 18, 30)
     2 -> listOf(12, 18, 24, 36)
     else -> listOf(3, 6, 12, 24)
 }
 
-/** Hints allowed for a scramble of [n] turns: 3->1, 6->2, 12->5, 24->10. */
 fun hintBudget(n: Int): Int = maxOf(1, (n * 0.4f).roundToInt())
 
 @Composable
@@ -142,60 +138,74 @@ fun SettingsScreen(
             .fillMaxSize()
             .background(S_BG)
             .verticalScroll(rememberScrollState())
-            .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 16.dp)
+            .padding(horizontal = 20.dp, vertical = 16.dp)
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = "Settings",
-                color = S_INK,
-                fontSize = 30.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.weight(1f)
-            )
-            TextButton(onClick = onDone) {
-                Text(text = "Done", color = S_ACCENT, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Settings",
+                    color = S_INK,
+                    fontSize = 28.sp,
+                    fontWeight = FontWeight.ExtraBold
+                )
+                Text(
+                    text = "Customize your puzzle experience",
+                    color = S_MUTED,
+                    fontSize = 13.sp
+                )
+            }
+            TextButton(
+                onClick = onDone,
+                modifier = Modifier
+                    .background(
+                        brush = Brush.horizontalGradient(listOf(Color(0xFFFFB703), Color(0xFFFF9F1C))),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                    .padding(horizontal = 16.dp, vertical = 4.dp)
+            ) {
+                Text(text = "Done", color = Color.Black, fontSize = 15.sp, fontWeight = FontWeight.Bold)
             }
         }
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(20.dp))
 
-        SectionTitle("Dot colours")
-        Text(
-            text = "Each theme gives the 6 dot groups colours that pop out from each other.",
-            color = S_MUTED,
-            fontSize = 13.sp
-        )
-        Spacer(modifier = Modifier.height(8.dp))
+        SectionTitle("Color Theme")
+        Spacer(modifier = Modifier.height(6.dp))
         for ((idx, theme) in DOT_THEMES.withIndex()) {
             val selected = idx == themeIdx
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 4.dp)
+                    .padding(vertical = 6.dp)
+                    .background(S_SURFACE, RoundedCornerShape(14.dp))
                     .border(
                         width = if (selected) 2.dp else 1.dp,
-                        color = if (selected) S_ACCENT else Color(0xFF2A2A2A),
-                        shape = RoundedCornerShape(10.dp)
+                        color = if (selected) S_ACCENT else S_BORDER,
+                        shape = RoundedCornerShape(14.dp)
                     )
                     .clickable { onTheme(idx) }
-                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
                     text = theme.name,
                     color = S_INK,
-                    fontSize = 16.sp,
-                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                    fontSize = 15.sp,
+                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
                     modifier = Modifier.weight(1f)
                 )
-                for (c in theme.colors) {
-                    Box(
-                        modifier = Modifier
-                            .padding(start = 4.dp)
-                            .size(16.dp)
-                            .clip(CircleShape)
-                            .background(c)
-                            .border(1.dp, Color.White.copy(alpha = 0.25f), CircleShape)
-                    )
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    for (c in theme.colors) {
+                        Box(
+                            modifier = Modifier
+                                .size(18.dp)
+                                .clip(CircleShape)
+                                .background(c)
+                                .border(1.dp, Color.White.copy(alpha = 0.2f), CircleShape)
+                        )
+                    }
                 }
                 if (selected) {
                     Text(
@@ -207,87 +217,107 @@ fun SettingsScreen(
                 }
             }
         }
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(20.dp))
 
-        SectionTitle("Difficulty")
-        Text(
-            text = "Each step up shuffles harder.",
-            color = S_MUTED,
-            fontSize = 13.sp
-        )
-        Spacer(modifier = Modifier.height(8.dp))
+        SectionTitle("Difficulty Level")
+        Spacer(modifier = Modifier.height(6.dp))
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             for ((idx, name) in DIFFICULTIES.withIndex()) {
                 val selected = idx == difficulty
                 OutlinedButton(
                     onClick = { onDifficulty(idx) },
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(48.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(
+                        containerColor = if (selected) S_ACCENT.copy(alpha = 0.15f) else S_SURFACE,
+                        contentColor = if (selected) S_ACCENT else S_INK
+                    ),
+                    border = androidx.compose.foundation.BorderStroke(
+                        width = if (selected) 2.dp else 1.dp,
+                        color = if (selected) S_ACCENT else S_BORDER
+                    )
                 ) {
                     Text(
                         text = name,
-                        color = if (selected) S_ACCENT else S_INK,
                         fontSize = 14.sp,
-                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
                         maxLines = 1
                     )
                 }
             }
         }
         Text(
-            text = "Beginner 3 · 6 · 12 · 24 turns — Smart 6 · 12 · 18 · 30 — Pro 12 · 18 · 24 · 36",
+            text = "Beginner 3·6·12·24 turns · Smart 6·12·18·30 · Pro 12·18·24·36",
             color = S_MUTED,
-            fontSize = 12.sp,
-            modifier = Modifier.padding(top = 6.dp)
+            fontSize = 11.sp,
+            modifier = Modifier.padding(top = 8.dp, start = 4.dp)
         )
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(20.dp))
 
-        SectionTitle("Game")
-        ToggleRow(
-            title = "Glow dots",
-            subtitle = "Every dot glows",
-            checked = glowDots,
-            onChecked = onGlowDots
-        )
-        ToggleRow(
-            title = "All rings turn one way",
-            subtitle = "Every tap turns the same way — Forward / Prime still flips it",
-            checked = oneDirection,
-            onChecked = onOneDirection
-        )
-        ToggleRow(
-            title = "Show timer",
-            subtitle = "Turn off to play without the clock",
-            checked = showTimer,
-            onChecked = onShowTimer
-        )
-        Spacer(modifier = Modifier.height(16.dp))
+        SectionTitle("Gameplay Preferences")
+        Spacer(modifier = Modifier.height(6.dp))
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(S_SURFACE, RoundedCornerShape(16.dp))
+                .border(1.dp, S_BORDER, RoundedCornerShape(16.dp))
+                .padding(horizontal = 16.dp, vertical = 4.dp)
+        ) {
+            Column {
+                ToggleRow(
+                    title = "Neon Glow Dots",
+                    subtitle = "Enhances dots with an atmospheric aura",
+                    checked = glowDots,
+                    onChecked = onGlowDots
+                )
+                ToggleRow(
+                    title = "Unified Ring Direction",
+                    subtitle = "Every tap rotates in the same default direction",
+                    checked = oneDirection,
+                    onChecked = onOneDirection
+                )
+                ToggleRow(
+                    title = "Show Game Timer",
+                    subtitle = "Display elapsed time during puzzles",
+                    checked = showTimer,
+                    onChecked = onShowTimer
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(20.dp))
 
-        SectionTitle("Learn")
+        SectionTitle("Help & Info")
+        Spacer(modifier = Modifier.height(6.dp))
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .background(S_SURFACE, RoundedCornerShape(14.dp))
+                .border(1.dp, S_BORDER, RoundedCornerShape(14.dp))
                 .clickable { onHowToPlay() }
-                .padding(vertical = 10.dp),
+                .padding(horizontal = 16.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(text = "How to play", color = S_INK, fontSize = 16.sp)
+                Text(text = "How to Play & Guide", color = S_INK, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
                 Text(
-                    text = "The rules, and what every move letter means",
+                    text = "Rules, notation, and strategy tips",
                     color = S_MUTED,
-                    fontSize = 13.sp
+                    fontSize = 12.sp
                 )
             }
-            Text(text = "›", color = S_MUTED, fontSize = 22.sp)
+            Text(text = "›", color = S_ACCENT, fontSize = 22.sp, fontWeight = FontWeight.Bold)
         }
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(16.dp))
         Text(
             text = "Hints per game: 3 turns → 1 hint · 6 → 2 · 12 → 5 · 24 → 10",
             color = S_MUTED,
-            fontSize = 12.sp
+            fontSize = 12.sp,
+            modifier = Modifier.padding(start = 4.dp, bottom = 20.dp)
         )
     }
 }
@@ -295,11 +325,12 @@ fun SettingsScreen(
 @Composable
 private fun SectionTitle(text: String) {
     Text(
-        text = text,
+        text = text.uppercase(),
         color = S_ACCENT,
-        fontSize = 14.sp,
+        fontSize = 12.sp,
         fontWeight = FontWeight.Bold,
-        modifier = Modifier.padding(bottom = 4.dp)
+        letterSpacing = 1.2.sp,
+        modifier = Modifier.padding(start = 4.dp, bottom = 4.dp)
     )
 }
 
@@ -313,12 +344,12 @@ private fun ToggleRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp),
+            .padding(vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(text = title, color = S_INK, fontSize = 16.sp)
-            Text(text = subtitle, color = S_MUTED, fontSize = 13.sp)
+            Text(text = title, color = S_INK, fontSize = 15.sp, fontWeight = FontWeight.Medium)
+            Text(text = subtitle, color = S_MUTED, fontSize = 12.sp)
         }
         Switch(
             checked = checked,
@@ -327,7 +358,7 @@ private fun ToggleRow(
                 checkedThumbColor = Color.Black,
                 checkedTrackColor = S_ACCENT,
                 uncheckedThumbColor = S_INK,
-                uncheckedTrackColor = Color(0xFF3A3A3A)
+                uncheckedTrackColor = Color(0xFF2A2E39)
             )
         )
     }
@@ -337,33 +368,28 @@ private fun ToggleRow(
 fun HowToPlayDialog(onClose: () -> Unit) {
     AlertDialog(
         onDismissRequest = onClose,
-        title = { Text(text = "How to play") },
+        containerColor = Color(0xFF13151A),
+        titleContentColor = Color(0xFFFFB703),
+        textContentColor = Color(0xFFF8F9FA),
+        title = { Text(text = "How to Play Rings", fontWeight = FontWeight.Bold) },
         text = {
             Column(
                 modifier = Modifier
                     .heightIn(max = 420.dp)
                     .verticalScroll(rememberScrollState())
             ) {
-                HowToText("Goal: sort all 54 dots back into their colour groups. When every group sits together, you win.")
-                HowToText("Tap a circle to turn it. Its 12 dots move 3 slots along the ring. Forward turns it one way, Prime ′ turns it the other way. The small arrows on each circle show which way its dots will go.")
-                HowToText("Scramble shuffles the dots. Level picks how many turns the shuffle is. Undo takes back your last move. Hint shows the next move back toward solved — its circle lights up yellow.")
-                HowToText("Hints are limited: 1 hint on a 3-turn game, 2 on 6, 5 on 12, 10 on 24. A run that uses a hint doesn't count for best time or moves.")
-                HowToText("The move names — each circle is one move of the cube:")
-                HowToText("U — Up, the top face")
-                HowToText("D — Down, the bottom face")
-                HowToText("F — Front, the front face")
-                HowToText("B — Back, the back face")
-                HowToText("L — Left, the left face")
-                HowToText("R — Right, the right face")
-                HowToText("M — Middle, the slice between Left and Right")
-                HowToText("E — Equator, the slice between Up and Down")
-                HowToText("S — Standing, the slice between Front and Back")
-                HowToText("′ — Prime: the same circle turns the opposite way.")
-                HowToText("Example scramble: L D′ F′ S′ B′ R′ M′ L′ U′ E′ D′ M′ M′ B′ — read left to right, one turn per letter.")
+                HowToText("Goal: Sort all 54 dots back into their original 6 color clusters to solve the 2D Rubik's Cube.")
+                HowToText("Tap any ring to rotate its 12 dots by 3 slots (a quarter turn). Direction arrows on each ring show the rotation path.")
+                HowToText("Forward & Prime (′): Toggle between clockwise and counter-clockwise rotation directions.")
+                HowToText("Undo & Hint: Undo takes back your last move. Hint highlights the optimal next move toward the solved state in glowing gold.")
+                HowToText("Scramble & Levels: Choose difficulty and turn count (Par) to test your puzzle-solving mastery.")
+                HowToText("Cube Notation: U (Up), D (Down), F (Front), B (Back), L (Left), R (Right), M (Middle), E (Equator), S (Standing).")
             }
         },
         confirmButton = {
-            TextButton(onClick = onClose) { Text(text = "Got it") }
+            TextButton(onClick = onClose) {
+                Text(text = "Got it", color = Color(0xFFFFB703), fontWeight = FontWeight.Bold)
+            }
         }
     )
 }
@@ -373,6 +399,7 @@ private fun HowToText(text: String) {
     Text(
         text = text,
         fontSize = 14.sp,
-        modifier = Modifier.padding(bottom = 8.dp)
+        color = Color(0xFFC9D1D9),
+        modifier = Modifier.padding(bottom = 10.dp)
     )
 }
