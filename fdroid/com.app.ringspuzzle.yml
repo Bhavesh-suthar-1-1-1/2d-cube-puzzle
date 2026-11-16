@@ -24,6 +24,12 @@ RepoType: git
 Repo: https://github.com/Bhavesh-suthar-1-1-1/2d-cube-puzzle
 
 Builds:
+  - versionName: 2.5
+    versionCode: 10
+    commit: 7c71c2aa926d50d4a856681c87d734276794c858
+    subdir: app
+    gradle:
+      - yes
   - versionName: 2.4
     versionCode: 6
     commit: 418b5ab02cd269062a3e7f5b3cbb74dc7efff897
@@ -39,5 +45,5 @@ Builds:
 
 AutoUpdateMode: Version v%v
 UpdateCheckMode: Tags
-CurrentVersion: 2.4
-CurrentVersionCode: 6
+CurrentVersion: 2.5
+CurrentVersionCode: 10

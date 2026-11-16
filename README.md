@@ -9,8 +9,12 @@ exactly like the video's diagram. Tap a circle and it turns like a cube move.
 
 Get the ready-to-install APK from the
 [latest release](https://github.com/Bhavesh-suthar-1-1-1/2d-cube-puzzle/releases/latest)
-(`rings-2.3-signed.apk`, Android 8.0 and up, no permissions, fully offline).
+(`rings-2.5-premium.apk`, Android 8.0 and up, no permissions, fully offline).
 Installs over earlier versions.
+
+## Screenshots
+
+<img src="screenshots/01-main-board.jpg" width="250" alt="Main board"> <img src="screenshots/02-settings.jpg" width="250" alt="Settings"> <img src="screenshots/03-how-to-play.jpg" width="250" alt="How to Play">
 
 ## How to play
 
@@ -49,6 +53,7 @@ Installs over earlier versions.
 
 ## Versions
 
+- **v2.5** — New dark theme with blue active ring and new RINGS header. All 8 dot themes renamed and recoloured (Classic Amber, Cyberpunk Neon, Sunset Glow, Emerald Deep, Royal Amethyst, Arctic Frost, Ember Dark, Pastel Dream). Wider ring spacing so the M ring stops grabbing its neighbour. Faster animations, glow dots on by default.
 - **v2.4** — Settings (gear in the header): 8 dot-colour themes (Classic, Pink, Lemon, Earth, Ocean, Sunset, Neon, Pastel), glow dots, all rings one way, show/hide timer, difficulty Beginner/Smart/Pro, How to play with what every move letter means. Hints now limited per game: 1 on 3 turns, 2 on 6, 5 on 12, 10 on 24.
 - **v2.3** — "Connect with" button under the controls — opens the Telegram
   bot to message Bhavesh directly.
